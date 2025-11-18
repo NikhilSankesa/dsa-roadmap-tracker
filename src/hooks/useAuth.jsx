@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { api } from '../services/api';
+import { X, Loader2 } from 'lucide-react';
 
 export const useAuth = () => {
   const [currentUser, setCurrentUser] = useState(null);
@@ -101,7 +102,6 @@ export const useAuth = () => {
       setUserProfile(null);
       setSession(null);
     } catch (error) {
-      console.error('Logout error:', error);
       throw error;
     } finally {
       setIsLoading(false);

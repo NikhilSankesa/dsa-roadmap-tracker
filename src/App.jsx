@@ -1,56 +1,125 @@
-// src/App.jsx
-import React, { useState } from 'react';
-import { Trophy, Star, User, LogIn, LogOut, ChevronDown, ChevronRight, Calendar, BookOpen, CheckCircle2, Circle, Clock, ExternalLink, StickyNote } from 'lucide-react';
+// src/App.jsx - ALL ISSUES FIXED
+import { useState, useEffect } from 'react';
+import { Trophy, LogOut, Lock } from 'lucide-react';
+import { roadmapData } from './data/roadmapData';
 import { useAuth } from './hooks/useAuth';
 import { useProgress } from './hooks/useProgress';
-import { calculateStats, getActivityData, getMotivationMessage } from './utils/calculations';
+import { useToast } from './hooks/useToast';
+import { calculateStats, getActivityData } from './utils/calculations';
 import { AuthModal } from './components/Auth/AuthModal';
 import { StatsDashboard } from './components/Dashboard/StatsDashboard';
 import { ActivityHeatmap } from './components/Dashboard/ActivityHeatmap';
-import { roadmapData } from './data/roadmapData';
+import { ToastContainer } from './components/Toast/Toast';
+import { WeekCard } from './components/Roadmap/WeekCard';
+
+// ========== LOCK CONFIGURATION ==========
+// Set to true to lock weeks 3+ for non-authenticated users
+// Set to false to unlock all weeks for everyone
+const ENABLE_WEEK_LOCKING = true;
+const UNLOCKED_WEEKS_COUNT = 2;
+// =========================================
 
 function App() {
-  const { currentUser, userProfile, isAuthenticated, login, signup, logout } = useAuth();
-  const { userProgress, toggleTask, updateNote, toggleSkipDay } = useProgress(currentUser);
+  // ✅ CRITICAL FIX: useAuth returns 'currentUser', not 'user'
+  const { currentUser, isAuthenticated, isLoading: authLoading, login, signup, logout } = useAuth();
+  const { userProgress, isLoading: progressLoading, toggleTask, updateNote, toggleSkipDay } = useProgress(currentUser);
+  const { toasts, removeToast, success, error, warning, auth } = useToast();
   
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [expandedWeeks, setExpandedWeeks] = useState({ 1: true });
+  const [expandedWeeks, setExpandedWeeks] = useState({});
   const [expandedDays, setExpandedDays] = useState({});
 
-  // Calculate stats
+  // ✅ FIX: Combined loading state
+  const isLoading = authLoading || (isAuthenticated && progressLoading);
+
+  // ✅ FIX: Don't show loading screen when auth modal is open
+  const shouldShowLoadingScreen = isLoading && !showAuthModal;
+
+  // Check roadmapData exists
+  const hasRoadmapData = roadmapData && Array.isArray(roadmapData.weeks) && roadmapData.weeks.length > 0;
+
+  // Calculate stats from roadmapData and userProgress
   const stats = calculateStats(roadmapData, userProgress);
   const activityData = getActivityData(userProgress.completedTasks);
-  const motivationMessage = getMotivationMessage(stats);
 
-  // Auth handlers with error handling
+  // Calculate total counts for StatsDashboard
+  const totalDays = hasRoadmapData 
+    ? roadmapData.weeks.reduce((sum, week) => sum + week.days.length, 0) 
+    : 0;
+  
+  const totalTasks = hasRoadmapData
+    ? roadmapData.weeks.reduce((sum, week) => 
+        sum + week.days.reduce((daySum, day) => daySum + day.tasks.length, 0), 0
+      )
+    : 0;
+
+  // Auto-expand first incomplete week on load
+  useEffect(() => {
+    if (hasRoadmapData && isAuthenticated && userProgress.completedTasks) {
+      const firstIncompleteWeek = roadmapData.weeks.find(week => {
+        const weekTotalTasks = week.days.reduce((sum, day) => sum + day.tasks.length, 0);
+        const weekCompletedTasks = week.days.reduce(
+          (sum, day) => sum + day.tasks.filter(task => userProgress.completedTasks[task.id]).length,
+          0
+        );
+        return weekCompletedTasks < weekTotalTasks;
+      });
+
+      if (firstIncompleteWeek) {
+        setExpandedWeeks(prev => ({
+          ...prev,
+          [firstIncompleteWeek.weekNumber]: true
+        }));
+      }
+    }
+  }, [isAuthenticated, hasRoadmapData]);
+
+  // ==================== EVENT HANDLERS ====================
+
   const handleLogin = async (email, password) => {
+    // ✅ FIX: Throw error to AuthModal, don't close modal on error
     try {
       await login(email, password);
+      // Only close modal if login succeeds
+      setShowAuthModal(false);
     } catch (error) {
+      // Re-throw to let AuthModal catch it
       throw error;
     }
   };
 
-  const handleSignup = async (username, password) => {
+  const handleSignup = async (username, email, password) => {
+    // ✅ FIX: Throw error to AuthModal
     try {
-      signup(username, password);
+      await signup(username, email, password);
+      // Don't close modal - let AuthModal show success message
     } catch (error) {
+      // Re-throw to let AuthModal catch it
       throw error;
     }
   };
 
-  // Task handlers with authentication check
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+
+  // ✅ FIX: Ensure these handlers work properly
+  // ✅ FIX: Task toggle with toast notification
   const handleToggleTask = (taskId) => {
     if (!isAuthenticated) {
-      alert('Please login to track progress');
-      setShowAuthModal(true);
+      auth('Please login to track your progress and save data', 4000);
+      setTimeout(() => setShowAuthModal(true), 500);
       return;
     }
     
     try {
       toggleTask(taskId);
     } catch (error) {
-      alert(error.message);
+      error(error.message || 'Failed to update task', 4000);
     }
   };
 
@@ -88,37 +157,33 @@ function App() {
     }));
   };
 
-  // Toggle day expansion
-  const toggleDay = (weekNumber, dayNumber) => {
-    const key = `${weekNumber}-${dayNumber}`;
+  // Toggle day expansion (used by WeekCard)
+  const handleToggleDayExpand = (dayId) => {
     setExpandedDays(prev => ({
       ...prev,
-      [key]: !prev[key]
+      [dayId]: !prev[dayId]
     }));
   };
 
-  // Check if task is completed
-  const isTaskCompleted = (taskId) => {
-    // return !!userProgress.completedTasks[taskId];
-    return !!userProgress.completedTasks[taskId];
-  };
+  // ==================== RENDER ====================
 
-  // Get day note
-  const getDayNote = (dayId) => {
-    return userProgress.notes[dayId] || '';
-  };
-
-  // Check if day is skipped
-  const isDaySkipped = (dayId) => {
-    // return userProgress.skippedDays.includes(dayId);
-    return !!userProgress.skippedDays[dayId];
-  };
-
-  // Check if we have valid roadmap data
-  const hasRoadmapData = roadmapData && Array.isArray(roadmapData.weeks) && roadmapData.weeks.length > 0;
+  // ✅ FIX: Show loading spinner while auth/data loads (but not when modal is open)
+  if (shouldShowLoadingScreen) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+          <p className="text-gray-600 font-medium">Loading your progress...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50">
+      {/* Toast Notifications */}
+      <ToastContainer toasts={toasts} removeToast={removeToast} />
+      
       <AuthModal 
         isOpen={showAuthModal} 
         onClose={() => setShowAuthModal(false)}
@@ -139,33 +204,26 @@ function App() {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="text-right">
-                <div className="text-4xl font-bold">{stats.completionPercentage}%</div>
-                <div className="text-sm text-indigo-100">Complete</div>
-              </div>
+              {isAuthenticated && (
+                <div className="text-right">
+                  <div className="text-4xl font-bold">{stats.completionPercentage}%</div>
+                  <div className="text-sm text-indigo-100">Complete</div>
+                </div>
+              )}
               
               {isAuthenticated ? (
-                <div className="flex items-center gap-2">
-                  <div className="bg-white bg-opacity-20 px-3 py-2 rounded-lg flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    <span className="text-sm font-medium">
-                      {userProfile?.username || currentUser?.email}
-                    </span>
-                  </div>
-                  <button
-                    onClick={logout}
-                    className="bg-white bg-opacity-20 hover:bg-opacity-30 px-3 py-2 rounded-lg flex items-center gap-2 transition-colors"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    <span className="text-sm">Logout</span>
-                  </button>
-                </div>
+                <button
+                  onClick={handleLogout}
+                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-indigo-50 transition-colors font-medium"
+                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium whitespace-nowrap"
                 >
-                  <LogIn className="w-4 h-4" />
                   Login / Sign Up
                 </button>
               )}
@@ -175,37 +233,35 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-7xl mx-auto px-4 py-8">
         {hasRoadmapData ? (
           <>
             {/* Stats Dashboard */}
-            <StatsDashboard stats={stats} />
-
-            {/* Activity Heatmap */}
-            {isAuthenticated && <ActivityHeatmap activityData={activityData} />}
-
-            {/* Motivation Banner */}
-            <div className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white rounded-lg shadow-md p-4 mb-6">
-              <div className="flex items-center gap-3">
-                <Star className="w-6 h-6 animate-pulse" />
-                <div className="text-lg font-semibold">{motivationMessage}</div>
+            {isAuthenticated ? (
+              <div className="mb-8 space-y-6">
+                <StatsDashboard 
+                  stats={{
+                    ...stats,
+                    totalDays,
+                    totalTasks
+                  }}
+                />
+                <ActivityHeatmap activityData={activityData} />
               </div>
-            </div>
-
-            {/* Login Prompt for non-authenticated users */}
-            {!isAuthenticated && (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-                <div className="flex items-center gap-3">
-                  <User className="w-6 h-6 text-yellow-600" />
-                  <div className="flex-1">
-                    <div className="font-semibold text-yellow-900">Login to Track Your Progress</div>
-                    <div className="text-sm text-yellow-700 mt-1">
-                      Create an account to save progress, maintain streaks, and track your learning journey!
-                    </div>
+            ) : (
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-6 mb-8">
+                <div className="flex items-center justify-between flex-wrap gap-4">
+                  <div>
+                    <h2 className="text-2xl font-bold text-yellow-900 mb-2">
+                      🚀 Start Your DSA Journey Today!
+                    </h2>
+                    <p className="text-yellow-800">
+                      Track your progress, save notes, and maintain your learning streak!
+                    </p>
                   </div>
                   <button
                     onClick={() => setShowAuthModal(true)}
-                    className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors whitespace-nowrap"
+                    className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors font-medium whitespace-nowrap"
                   >
                     Get Started
                   </button>
@@ -213,282 +269,112 @@ function App() {
               </div>
             )}
 
-            {/* Roadmap Content */}
-            <div className="space-y-6">
+            {/* Roadmap Weeks - Using WeekCard Component */}
+            <div className="space-y-4">
               {roadmapData.weeks.map((week) => {
-                const isWeekExpanded = expandedWeeks[week.weekNumber];
-                const weekTotalTasks = week.days.reduce((sum, day) => sum + day.tasks.length, 0);
-                const weekCompletedTasks = week.days.reduce((sum, day) => {
-                  return sum + day.tasks.filter(task => isTaskCompleted(task.id)).length;
-                }, 0);
-                const weekProgress = weekTotalTasks > 0 ? Math.round((weekCompletedTasks / weekTotalTasks) * 100) : 0;
-
+                const isLocked = ENABLE_WEEK_LOCKING && !isAuthenticated && week.weekNumber > UNLOCKED_WEEKS_COUNT;
+                
                 return (
-                  <div key={week.weekNumber} className="bg-white rounded-lg shadow-md overflow-hidden">
-                    {/* Week Header */}
-                    <button
-                      onClick={() => toggleWeek(week.weekNumber)}
-                      className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-center gap-4">
-                        {isWeekExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                        <div className="text-left">
-                          <h2 className="text-xl font-bold text-gray-800">
-                            Week {week.weekNumber}: {week.title}
-                          </h2>
-                          <p className="text-sm text-gray-600 mt-1">
-                            {weekCompletedTasks} / {weekTotalTasks} tasks completed
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <div className="text-2xl font-bold text-indigo-600">{weekProgress}%</div>
-                        </div>
-                        <div className="w-32 bg-gray-200 rounded-full h-2">
-                          <div 
-                            className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${weekProgress}%` }}
-                          />
-                        </div>
-                      </div>
-                    </button>
-
-                    {/* Week Content - Days */}
-                    {isWeekExpanded && (
-                      <div className="border-t border-gray-200">
-                        {week.days.map((day) => {
-                          const dayKey = `${week.weekNumber}-${day.day}`;
-                          const isDayExpanded = expandedDays[dayKey];
-                          const dayId = `w${week.weekNumber}d${day.day}`;
-                          const dayCompletedTasks = day.tasks.filter(task => isTaskCompleted(task.id)).length;
-                          const dayProgress = Math.round((dayCompletedTasks / day.tasks.length) * 100);
-                          const daySkipped = isDaySkipped(dayId);
-
-                          return (
-                            <div key={day.day} className="border-b border-gray-100 last:border-b-0">
-                              {/* Day Header */}
-                              <button
-                                onClick={() => toggleDay(week.weekNumber, day.day)}
-                                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition-colors"
-                              >
-                                <div className="flex items-center gap-4">
-                                  {isDayExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-                                  <Calendar className="w-5 h-5 text-indigo-500" />
-                                  <div className="text-left">
-                                    <h3 className="font-semibold text-gray-800">
-                                      Day {day.day}: {day.title}
-                                    </h3>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      {day.topics.map((topic, idx) => (
-                                        <span key={idx} className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded">
-                                          {topic}
-                                        </span>
-                                      ))}
-                                      {daySkipped && (
-                                        <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded">
-                                          Skipped
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <span className="text-sm text-gray-600">
-                                    {dayCompletedTasks}/{day.tasks.length}
-                                  </span>
-                                  <div className="w-24 bg-gray-200 rounded-full h-2">
-                                    <div 
-                                      className="bg-green-500 h-2 rounded-full transition-all duration-300"
-                                      style={{ width: `${dayProgress}%` }}
-                                    />
-                                  </div>
-                                </div>
-                              </button>
-
-                              {/* Day Content */}
-                              {isDayExpanded && (
-                                <div className="px-6 pb-4 bg-gray-50">
-                                  {/* Subtopics & Resources */}
-                                  {day.subtopics && day.subtopics.length > 0 && (
-                                    <div className="mb-4">
-                                      <h4 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                                        <BookOpen className="w-4 h-4" />
-                                        Resources
-                                      </h4>
-                                      {day.subtopics.map((subtopic, idx) => (
-                                        <div key={idx} className="mb-3">
-                                          <div className="font-medium text-sm text-gray-700 mb-1">{subtopic.name}</div>
-                                          <div className="flex flex-wrap gap-2">
-                                            {subtopic.resources.map((resource, rIdx) => (
-                                              <a
-                                                key={rIdx}
-                                                href={resource.url}
-                                                target="_blank"
-                                                rel="noopener noreferrer"
-                                                className="text-xs bg-blue-50 text-blue-700 px-3 py-1 rounded hover:bg-blue-100 transition-colors flex items-center gap-1"
-                                              >
-                                                {resource.title}
-                                                <ExternalLink className="w-3 h-3" />
-                                              </a>
-                                            ))}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {/* Tasks */}
-                                  <div className="space-y-2 mb-4">
-                                    {day.tasks.map((task) => {
-                                      const completed = isTaskCompleted(task.id);
-                                      return (
-                                        <div
-                                          key={task.id}
-                                          className={`p-3 rounded-lg border-2 transition-all ${
-                                            completed 
-                                              ? 'bg-green-50 border-green-200' 
-                                              : 'bg-white border-gray-200'
-                                          }`}
-                                        >
-                                          <div className="flex items-start gap-3">
-                                            <button
-                                              onClick={() => handleToggleTask(task.id)}
-                                              className="mt-1 flex-shrink-0"
-                                            >
-                                              {completed ? (
-                                                <CheckCircle2 className="w-5 h-5 text-green-600" />
-                                              ) : (
-                                                <Circle className="w-5 h-5 text-gray-400" />
-                                              )}
-                                            </button>
-                                            <div className="flex-1">
-                                              <div className="flex items-start justify-between gap-2">
-                                                <div className="flex-1">
-                                                  <div className={`font-medium ${completed ? 'text-green-900 line-through' : 'text-gray-800'}`}>
-                                                    {task.title}
-                                                  </div>
-                                                  <div className="flex items-center gap-2 mt-1">
-                                                    <span className={`text-xs px-2 py-0.5 rounded ${
-                                                      task.type === 'practice' ? 'bg-purple-100 text-purple-700' :
-                                                      task.type === 'study' ? 'bg-blue-100 text-blue-700' :
-                                                      'bg-orange-100 text-orange-700'
-                                                    }`}>
-                                                      {task.type}
-                                                    </span>
-                                                    {task.difficulty && (
-                                                      <span className={`text-xs px-2 py-0.5 rounded ${
-                                                        task.difficulty === 'easy' ? 'bg-green-100 text-green-700' :
-                                                        task.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
-                                                      }`}>
-                                                        {task.difficulty}
-                                                      </span>
-                                                    )}
-                                                    {task.estimatedTime && (
-                                                      <span className="text-xs text-gray-500 flex items-center gap-1">
-                                                        <Clock className="w-3 h-3" />
-                                                        {task.estimatedTime}
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                </div>
-                                                {task.url && (
-                                                  <a
-                                                    href={task.url}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    className="text-indigo-600 hover:text-indigo-700"
-                                                  >
-                                                    <ExternalLink className="w-4 h-4" />
-                                                  </a>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-
-                                  {/* Mastery Checkpoint */}
-                                  {day.masteryCheckpoint && (
-                                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 mb-4">
-                                      <div className="font-semibold text-purple-900 text-sm mb-1">
-                                        🎯 Mastery Checkpoint
-                                      </div>
-                                      <div className="text-sm text-purple-700">{day.masteryCheckpoint}</div>
-                                    </div>
-                                  )}
-
-                                  {/* Notes Section */}
-                                  <div className="bg-white rounded-lg p-3 border border-gray-200">
-                                    <div className="flex items-center gap-2 mb-2">
-                                      <StickyNote className="w-4 h-4 text-gray-600" />
-                                      <label className="text-sm font-medium text-gray-700">Notes</label>
-                                    </div>
-                                    <textarea
-                                      value={getDayNote(dayId)}
-                                      onChange={(e) => handleUpdateNote(dayId, e.target.value)}
-                                      placeholder={isAuthenticated ? "Add your notes and learnings..." : "Login to add notes"}
-                                      disabled={!isAuthenticated}
-                                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm resize-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent disabled:bg-gray-100"
-                                      rows="3"
-                                    />
-                                  </div>
-
-                                  {/* Skip Day Button */}
-                                  <button
-                                    onClick={() => handleToggleSkipDay(dayId)}
-                                    className={`mt-2 text-sm px-3 py-1 rounded ${
-                                      daySkipped 
-                                        ? 'bg-yellow-100 text-yellow-700 hover:bg-yellow-200' 
-                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                    } transition-colors`}
-                                  >
-                                    {daySkipped ? 'Unskip Day' : 'Skip Day'}
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  <div
+                    key={week.weekNumber}
+                    className={`transform transition-all duration-300 ${
+                      isLocked 
+                        ? 'hover:scale-[1.01] hover:-translate-y-1' 
+                        : 'hover:scale-[1.005]'
+                    }`}
+                    title={isLocked ? `🔒 Sign in to unlock Week ${week.weekNumber}` : ''}
+                  >
+                  <WeekCard
+                    // key={week.weekNumber}
+                    week={week}
+                    isExpanded={expandedWeeks[week.weekNumber]}
+                    onToggleExpand={() => {
+                      if (isLocked) {
+                        const messages = [
+                          `🔒 Want to explore ${week.title}? Sign up for free to unlock all weeks!`,
+                          `🚀 Week ${week.weekNumber} awaits! Create your free account to continue learning.`,
+                          `💡 Unlock Week ${week.weekNumber} and ${roadmapData.weeks.length - week.weekNumber} more weeks with a free account!`,
+                        ];
+                        const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+                        auth(randomMessage, 5000);
+                        setTimeout(() => setShowAuthModal(true), 800);
+                      } else {
+                        toggleWeek(week.weekNumber);
+                      }
+                    }}
+                    expandedDays={expandedDays}
+                    onToggleDayExpand={handleToggleDayExpand}
+                    userProgress={userProgress}
+                    onToggleTask={handleToggleTask}
+                    onUpdateNote={handleUpdateNote}
+                    onToggleSkipDay={handleToggleSkipDay}
+                    isAuthenticated={isAuthenticated}
+                    isLocked={isLocked}
+                  /></div>
                 );
               })}
             </div>
 
-            {/* Footer */}
-            <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-              <h3 className="text-lg font-bold text-gray-800 mb-3">💡 Success Tips</h3>
-              <ul className="space-y-2 text-sm text-gray-700">
-                <li>• <strong>Daily Streak:</strong> Complete at least one task daily to maintain your streak!</li>
-                <li>• <strong>Beat Your Record:</strong> Try to surpass your max streak!</li>
-                <li>• <strong>Visualize Progress:</strong> Use the activity heatmap to see your consistency</li>
-                <li>• <strong>Pattern Recognition:</strong> Focus on understanding patterns, not memorizing</li>
-                <li>• <strong>Notes:</strong> Document your learnings for each day</li>
-              </ul>
-            </div>
+            {/* Roadmap Weeks - Using WeekCard Component */}
+            {/* <div className="space-y-4">
+              {roadmapData.weeks.map((week) => {
+                const isLocked = !isAuthenticated && week.weekNumber > 2;
+                
+                return (
+                  <div key={week.weekNumber} className="relative">
+                    {/* ✅ Lock overlay for weeks 3+ when not authenticated *
+                    {isLocked && (
+                      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/40 to-gray-900/60 backdrop-blur-[2px] rounded-lg z-10 flex items-center justify-center cursor-pointer"
+                        onClick={() => {
+                          auth('Login to unlock all weeks! You can view Weeks 1-2 for free.', 4000);
+                          setTimeout(() => setShowAuthModal(true), 500);
+                        }}
+                      >
+                        <div className="bg-white/95 rounded-lg p-6 shadow-2xl text-center max-w-sm mx-4">
+                          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          </div>
+                          <h3 className="text-lg font-bold text-gray-900 mb-2">Unlock All Weeks</h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Create a free account to access all 16 weeks and track your progress!
+                          </p>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowAuthModal(true);
+                            }}
+                            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
+                          >
+                            Sign Up Free
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <WeekCard
+                      week={week}
+                      isExpanded={expandedWeeks[week.weekNumber]}
+                      onToggleExpand={() => toggleWeek(week.weekNumber)}
+                      expandedDays={expandedDays}
+                      onToggleDayExpand={handleToggleDayExpand}
+                      userProgress={userProgress}
+                      onToggleTask={handleToggleTask}
+                      onUpdateNote={handleUpdateNote}
+                      onToggleSkipDay={handleToggleSkipDay}
+                      isAuthenticated={isAuthenticated}
+                    />
+                  </div>
+                );
+              })}
+            </div> */}
+
           </>
         ) : (
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="text-center py-8">
-              <Trophy className="w-16 h-16 text-indigo-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-gray-800 mb-2">
-                Import Your 110-Day Roadmap
-              </h3>
-              <p className="text-gray-600 mb-4">
-                Add your complete roadmap data to src/data/roadmapData.js
-              </p>
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-2xl mx-auto">
-                <p className="text-sm text-blue-800">
-                  The roadmap component will display here once you add your data. Import the WeekCard and 
-                  DayCard components to display the full roadmap.
-                </p>
-              </div>
-            </div>
+          <div className="bg-white rounded-lg shadow-md p-8 text-center">
+            <div className="text-red-600 text-lg font-semibold">Error: Unable to load roadmap data</div>
+            <div className="text-gray-600 mt-2">Please check the roadmapData.js file</div>
           </div>
         )}
       </div>

@@ -1,5 +1,5 @@
-// src/hooks/useProgress.js
-import { useState, useEffect } from 'react';
+// src/hooks/useProgress.js - WITH DEBOUNCING IMPLEMENTED
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../services/api';
 
 const emptyProgress = {
@@ -18,6 +18,9 @@ export const useProgress = (currentUser) => {
   const [userProgress, setUserProgress] = useState(emptyProgress);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  
+  // useRef to store debounce timer
+  const noteTimers = useRef({});
 
   // Load user progress when user changes
   useEffect(() => {
@@ -34,11 +37,25 @@ export const useProgress = (currentUser) => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await api.getAllUserData(currentUser.id);
-      setUserProgress(data);
+      
+      const [progress, notes, skippedDays, stats] = await Promise.all([
+        api.getProgress(currentUser.id),
+        api.getNotes(currentUser.id),
+        api.getSkippedDays(currentUser.id),
+        api.getStats(currentUser.id)
+      ]);
+
+      setUserProgress({
+        completedTasks: progress,
+        notes,
+        skippedDays,
+        stats,
+        startDate: currentUser.created_at || new Date().toISOString()
+      });
     } catch (err) {
       console.error('Error loading progress:', err);
       setError(err.message);
+      setUserProgress(emptyProgress);
     } finally {
       setIsLoading(false);
     }
@@ -66,19 +83,23 @@ export const useProgress = (currentUser) => {
       // Update in database
       await api.toggleTask(currentUser.id, taskId);
       
-      // Refresh stats
-      await api.updateStreaks(currentUser.id);
-      const stats = await api.getStats(currentUser.id);
-      setUserProgress(prev => ({ ...prev, stats }));
+      // Update stats after task toggle
+      try {
+        await api.updateStreaks(currentUser.id);
+        const stats = await api.getStats(currentUser.id);
+        setUserProgress(prev => ({ ...prev, stats }));
+      } catch (statsErr) {
+        console.error('Error updating stats:', statsErr);
+      }
       
     } catch (err) {
       console.error('Error toggling task:', err);
       setError(err.message);
-      // Reload to get correct state
       await loadProgress();
     }
   };
 
+  // DEBOUNCED updateNote function
   const updateNote = async (dayId, note) => {
     if (!currentUser?.id) {
       throw new Error('Please login to save notes');
@@ -87,14 +108,27 @@ export const useProgress = (currentUser) => {
     try {
       setError(null);
       
-      // Optimistic update
+      // Update UI immediately (feels instant to user)
       setUserProgress(prev => ({
         ...prev,
         notes: { ...prev.notes, [dayId]: note }
       }));
 
-      // Update in database (debounced in real app)
-      await api.updateNote(currentUser.id, dayId, note);
+      // Clear existing timer for this day
+      if (noteTimers.current[dayId]) {
+        clearTimeout(noteTimers.current[dayId]);
+      }
+
+      // Set new timer - save after 1 second of no typing
+      noteTimers.current[dayId] = setTimeout(async () => {
+        try {
+          await api.updateNote(currentUser.id, dayId, note);
+          console.log(`✅ Note saved for ${dayId}`);
+        } catch (err) {
+          console.error('Error saving note:', err);
+          setError(err.message);
+        }
+      }, 1000); // Wait 1 second after user stops typing
       
     } catch (err) {
       console.error('Error updating note:', err);
@@ -127,37 +161,7 @@ export const useProgress = (currentUser) => {
     } catch (err) {
       console.error('Error toggling skip day:', err);
       setError(err.message);
-      // Reload to get correct state
       await loadProgress();
-    }
-  };
-
-  const resetProgress = async () => {
-    if (!currentUser?.id) return;
-    
-    if (!confirm('Are you sure you want to reset all progress? This cannot be undone.')) {
-      return;
-    }
-
-    try {
-      setIsLoading(true);
-      setError(null);
-      
-      // Delete all progress for user
-      await Promise.all([
-        supabase.from('user_progress').delete().eq('user_id', currentUser.id),
-        supabase.from('user_notes').delete().eq('user_id', currentUser.id),
-        supabase.from('skipped_days').delete().eq('user_id', currentUser.id)
-      ]);
-      
-      // Reload empty progress
-      await loadProgress();
-      
-    } catch (err) {
-      console.error('Error resetting progress:', err);
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -168,7 +172,6 @@ export const useProgress = (currentUser) => {
     toggleTask,
     updateNote,
     toggleSkipDay,
-    resetProgress,
     reloadProgress: loadProgress
   };
 };

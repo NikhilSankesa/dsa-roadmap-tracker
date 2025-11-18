@@ -3,3 +3,150 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer utilities {
+  /* Animations */
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  .animate-slideIn {
+    animation: slideIn 0.3s ease-out;
+  }
+  
+  .animate-slideInBounce {
+    animation: slideInBounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  .animate-iconBounce {
+    animation: iconBounce 0.5s ease-in-out;
+  }
+  
+  /* Utility classes */
+  .scale-102 {
+    transform: scale(1.02);
+  }
+}
+
+/* Keyframe Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInBounce {
+  0% {
+    opacity: 0;
+    transform: translateX(400px) scale(0.8);
+  }
+  60% {
+    opacity: 1;
+    transform: translateX(-20px) scale(1.05);
+  }
+  80% {
+    transform: translateX(10px) scale(0.98);
+  }
+  100% {
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes iconBounce {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
+
+@keyframes lock-pulse {
+  0%, 100% {
+    opacity: 0.2;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(1.5);
+  }
+}
+
+@keyframes subtle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+@keyframes lock-shake {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(-5deg);
+  }
+  75% {
+    transform: rotate(5deg);
+  }
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+*:focus-visible {
+  outline: 2px solid #6366f1;
+  outline-offset: 2px;
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Interactive Effects */
+.group:hover .lock-icon {
+  animation: lock-shake 0.5s ease-in-out;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% center;
+  }
+  100% {
+    background-position: 200% center;
+  }
+}

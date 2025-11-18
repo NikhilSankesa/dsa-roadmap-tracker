@@ -1,49 +1,80 @@
-// src/components/Auth/AuthModal.jsx
-import React, { useState } from 'react';
+// src/components/Auth/AuthModal.jsx - COMPLETE WITH ALL FIXES
+import React, { useState, useEffect } from 'react';
 import { X, Loader2 } from 'lucide-react';
 
 export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
   const [authMode, setAuthMode] = useState('login');
-  const [formData, setFormData] = useState({ username: '', email: '', password: '' });
-  const [error, setError] = useState('');
+  const [formData, setFormData] = useState({
+    username: '',
+    email: '',
+    password: ''
+  });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setError('');
+      setSuccess('');
+      setLoading(false);
+    }
+  }, [isOpen]);
+
+  const switchMode = (mode) => {
+    setAuthMode(mode);
+    setError('');
+    setSuccess('');
+    setFormData({ username: '', email: '', password: '' });
+  };
+
+  const handleClose = () => {
+    setError('');
+    setSuccess('');
+    setFormData({ username: '', email: '', password: '' });
+    onClose();
+  };
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
-    e?.preventDefault();
+    e.preventDefault();
     setError('');
     setSuccess('');
     setLoading(true);
 
     try {
       if (authMode === 'login') {
-        if (!formData.email || !formData.password) {
-          throw new Error('Please enter email and password');
-        }
         await onLogin(formData.email, formData.password);
+        setSuccess('Login successful!');
         setFormData({ username: '', email: '', password: '' });
-        onClose();
+        setTimeout(() => handleClose(), 1000);
       } else {
-        if (!formData.username || !formData.email || !formData.password) {
-          throw new Error('Please fill in all fields');
-        }
-        if (formData.password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
-        }
         await onSignup(formData.username, formData.email, formData.password);
-        setSuccess('Account created! Please check your email to verify your account.');
+        setSuccess('Account created! Please check your email to verify your account before logging in.');
         setFormData({ username: '', email: '', password: '' });
-        
-        // Switch to login after 3 seconds
-        setTimeout(() => {
-          setAuthMode('login');
-          setSuccess('');
-        }, 3000);
       }
     } catch (err) {
-      setError(err.message || 'An error occurred');
+      console.error('Auth error:', err);
+      
+      let errorMessage = 'An error occurred';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      // Make error messages more user-friendly
+      if (errorMessage.includes('Invalid login credentials')) {
+        errorMessage = 'Invalid email or password. Please try again.';
+      } else if (errorMessage.includes('Email not confirmed')) {
+        errorMessage = 'Please verify your email before logging in. Check your inbox.';
+      } else if (errorMessage.includes('User already registered')) {
+        errorMessage = 'This email is already registered. Try logging in instead.';
+      } else if (errorMessage.includes('Unable to validate email address')) {
+        errorMessage = 'Please enter a valid email address.';
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -51,19 +82,25 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
 
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !loading) {
-      handleSubmit();
+      handleSubmit(e);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+    <div 
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+      onClick={handleClose}
+    >
+      <div 
+        className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 relative animate-fadeIn"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-800">
+          <h2 className="text-2xl font-bold text-gray-900">
             {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
           </h2>
           <button 
-            onClick={onClose} 
+            onClick={handleClose}
             className="text-gray-500 hover:text-gray-700 transition-colors"
             disabled={loading}
           >
@@ -99,6 +136,7 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
                 placeholder="Choose a username"
                 disabled={loading}
                 autoComplete="username"
+                required
               />
             </div>
           )}
@@ -116,6 +154,7 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
               placeholder="your.email@example.com"
               disabled={loading}
               autoComplete="email"
+              required
             />
           </div>
           
@@ -132,6 +171,8 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
               placeholder={authMode === 'signup' ? 'Min. 6 characters' : 'Enter password'}
               disabled={loading}
               autoComplete={authMode === 'login' ? 'current-password' : 'new-password'}
+              required
+              minLength={authMode === 'signup' ? 6 : undefined}
             />
             {authMode === 'signup' && (
               <p className="text-xs text-gray-500 mt-1">Must be at least 6 characters</p>
@@ -159,11 +200,7 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
             <>
               Don't have an account?{' '}
               <button
-                onClick={() => {
-                  setAuthMode('signup');
-                  setError('');
-                  setSuccess('');
-                }}
+                onClick={() => switchMode('signup')}
                 disabled={loading}
                 className="text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
               >
@@ -174,11 +211,7 @@ export const AuthModal = ({ isOpen, onClose, onLogin, onSignup }) => {
             <>
               Already have an account?{' '}
               <button
-                onClick={() => {
-                  setAuthMode('login');
-                  setError('');
-                  setSuccess('');
-                }}
+                onClick={() => switchMode('login')}
                 disabled={loading}
                 className="text-indigo-600 hover:text-indigo-800 font-medium disabled:opacity-50"
               >

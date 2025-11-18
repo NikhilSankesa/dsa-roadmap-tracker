@@ -29,10 +29,11 @@ export const api = {
     return data;
   },
 
-  async signOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-  },
+ async signOut() {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+  return { success: true }; 
+ },
 
   async getCurrentUser() {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -44,6 +45,17 @@ export const api = {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error) throw error;
     return session;
+  },
+
+  async getUserProfile(userId) {
+    const { data, error } = await supabase
+      .from('user_profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+    
+    if (error) throw error;
+    return data;
   },
 
   // ==================== PROGRESS ====================
@@ -167,7 +179,7 @@ export const api = {
     }
 
     if (existing) {
-      // Delete if exists
+      // Delete if exists (unskip)
       const { error } = await supabase
         .from('skipped_days')
         .delete()
@@ -177,7 +189,7 @@ export const api = {
       if (error) throw error;
       return { action: 'unskipped' };
     } else {
-      // Insert if doesn't exist
+      // Insert if doesn't exist (skip)
       const { error } = await supabase
         .from('skipped_days')
         .insert({ user_id: userId, day_id: dayId });
@@ -196,54 +208,41 @@ export const api = {
       .eq('user_id', userId)
       .single();
     
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error && error.code !== 'PGRST116') {
+      throw error;
+    }
     
     return data || {
       current_streak: 0,
       max_streak: 0,
-      total_tasks_completed: 0
+      total_tasks_completed: 0,
+      last_activity_date: null
     };
   },
 
+  async updateUserStats(userId, stats) {
+    const { error } = await supabase
+      .from('user_stats')
+      .upsert({
+        user_id: userId,
+        ...stats,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+  },
+
+  // Update streaks using database function
   async updateStreaks(userId) {
-    const { error } = await supabase.rpc('update_user_streaks', {
-      p_user_id: userId
-    });
-    
-    if (error) throw error;
-  },
-
-  // ==================== USER PROFILE ====================
-  
-  async getUserProfile(userId) {
-    const { data, error } = await supabase
-      .from('user_profiles')
-      .select('username, created_at')
-      .eq('id', userId)
-      .single();
-    
-    if (error) throw error;
-    return data;
-  },
-
-  // ==================== COMPLETE USER DATA ====================
-  
-  async getAllUserData(userId) {
-    const [progress, notes, skippedDays, stats, profile] = await Promise.all([
-      this.getProgress(userId),
-      this.getNotes(userId),
-      this.getSkippedDays(userId),
-      this.getStats(userId),
-      this.getUserProfile(userId)
-    ]);
-
-    return {
-      completedTasks: progress,
-      notes,
-      skippedDays,
-      stats,
-      profile,
-      startDate: profile.created_at
-    };
+    try {
+      const { error } = await supabase.rpc('update_user_streaks', {
+        p_user_id: userId
+      });
+      
+      if (error) throw error;
+    } catch (err) {
+      // If function doesn't exist, silently fail
+      console.warn('Streak update function not available:', err);
+    }
   }
 };
