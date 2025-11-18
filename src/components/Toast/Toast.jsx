@@ -100,29 +100,29 @@ export const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
 
   return (
     <div 
-      className={`fixed top-4 right-4 z-[100] transition-all duration-300 ${
+      className={`transition-all duration-300 ${
         isExiting 
           ? 'opacity-0 translate-x-full scale-95' 
           : 'opacity-100 translate-x-0 scale-100 animate-slideInBounce'
       }`}
     >
       <div 
-        className={`bg-gradient-to-br ${bgGradient} ${borderColor} border-2 rounded-xl shadow-2xl ${shadowColor} p-4 flex items-start gap-3 min-w-[350px] max-w-md backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200`}
+        className={`bg-gradient-to-br ${bgGradient} ${borderColor} border-2 rounded-lg sm:rounded-xl shadow-2xl ${shadowColor} p-3 sm:p-4 flex items-start gap-2 sm:gap-3 backdrop-blur-sm relative overflow-hidden group hover:scale-[1.02] transition-transform duration-200`}
       >
         {/* Animated background gradient */}
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
         
         {/* Icon with animated background */}
-        <div className={`${iconBg} rounded-full p-2 flex-shrink-0 relative z-10 animate-iconBounce`}>
-          <Icon className={`w-5 h-5 ${iconColor}`} />
+        <div className={`${iconBg} rounded-full p-1.5 sm:p-2 flex-shrink-0 relative z-10 animate-iconBounce`}>
+          <Icon className={`w-4 h-4 sm:w-5 sm:h-5 ${iconColor}`} />
           {type === 'auth' && (
             <span className="absolute inset-0 bg-indigo-400 rounded-full animate-ping opacity-20"></span>
           )}
         </div>
         
         {/* Message content */}
-        <div className={`flex-1 ${textColor} relative z-10`}>
-          <p className="text-sm font-semibold leading-relaxed">
+        <div className={`flex-1 ${textColor} relative z-10 min-w-0 pr-1`}>
+          <p className="text-xs sm:text-sm font-semibold leading-relaxed break-words">
             {message}
           </p>
         </div>
@@ -132,13 +132,13 @@ export const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
           onClick={handleClose}
           className={`${textColor} hover:bg-black/5 rounded-lg p-1 transition-all flex-shrink-0 relative z-10 hover:rotate-90 duration-200`}
         >
-          <X className="w-4 h-4" />
+          <X className="w-3 h-3 sm:w-4 sm:h-4" />
         </button>
 
         {/* Progress bar at bottom */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 rounded-b-xl overflow-hidden">
+        <div className="absolute bottom-0 left-0 right-0 h-1 bg-black/5 rounded-b-lg sm:rounded-b-xl overflow-hidden">
           <div 
-            className={`h-full ${progressColor} transition-all duration-50 ease-linear rounded-b-xl`}
+            className={`h-full ${progressColor} transition-all duration-50 ease-linear rounded-b-lg sm:rounded-b-xl`}
             style={{ width: `${progress}%` }}
           ></div>
         </div>
@@ -147,28 +147,29 @@ export const Toast = ({ message, type = 'info', onClose, duration = 3000 }) => {
   );
 };
 
-// Toast Container Component
+// Toast Container Component - UPDATED FOR MOBILE
 export const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 right-4 z-[100] space-y-3 pointer-events-none">
-      {toasts.map((toast, index) => (
-        <div 
-          key={toast.id} 
-          className="pointer-events-auto"
-          style={{ 
-            marginTop: index > 0 ? '12px' : '0',
-            transform: `translateY(${index * 4}px)`,
-            transition: 'all 0.3s ease-out'
-          }}
-        >
-          <Toast
-            message={toast.message}
-            type={toast.type}
-            onClose={() => removeToast(toast.id)}
-            duration={toast.duration}
-          />
-        </div>
-      ))}
+    <div className="fixed top-2 sm:top-4 right-2 sm:right-4 left-2 sm:left-auto z-[100] max-w-[calc(100vw-16px)] sm:max-w-md pointer-events-none">
+      <div className="space-y-2 sm:space-y-3">
+        {toasts.map((toast, index) => (
+          <div 
+            key={toast.id} 
+            className="pointer-events-auto"
+            style={{ 
+              transform: `translateY(${index * 4}px)`,
+              transition: 'all 0.3s ease-out'
+            }}
+          >
+            <Toast
+              message={toast.message}
+              type={toast.type}
+              onClose={() => removeToast(toast.id)}
+              duration={toast.duration}
+            />
+          </div>
+        ))}
+      </div>
     </div>
   );
 };

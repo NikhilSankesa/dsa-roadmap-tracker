@@ -193,38 +193,40 @@ function App() {
       
       {/* Header */}
       <div className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Trophy className="w-8 h-8" />
-                DSA Mastery Roadmap
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="w-full sm:w-auto">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
+                <Trophy className="w-6 h-6 sm:w-7 sm:h-7 lg:w-8 lg:h-8 flex-shrink-0" />
+                <span>DSA Mastery Roadmap</span>
               </h1>
-              <p className="text-indigo-100 mt-1">110-Day Journey • Track Your Progress</p>
+              <p className="text-indigo-100 mt-1 text-xs sm:text-sm lg:text-base">110-Day Journey • Track Your Progress</p>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto justify-between sm:justify-end">
               {isAuthenticated && (
-                <div className="text-right">
-                  <div className="text-4xl font-bold">{stats.completionPercentage}%</div>
-                  <div className="text-sm text-indigo-100">Complete</div>
+                <div className="text-left sm:text-right">
+                  <div className="text-2xl sm:text-3xl lg:text-4xl font-bold">{stats.completionPercentage}%</div>
+                  <div className="text-xs sm:text-sm text-indigo-100">Complete</div>
                 </div>
               )}
               
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium flex items-center gap-2 whitespace-nowrap"
+                  className="bg-white text-indigo-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium flex items-center gap-2 text-sm sm:text-base whitespace-nowrap"
                 >
                   <LogOut className="w-4 h-4" />
-                  Logout
+                  <span className="hidden sm:inline">Logout</span>
+                  <span className="sm:hidden">Exit</span>
                 </button>
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="bg-white text-indigo-600 px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium whitespace-nowrap"
+                  className="bg-white text-indigo-600 px-3 sm:px-4 py-2 rounded-lg hover:bg-indigo-50 transition-colors font-medium text-sm sm:text-base whitespace-nowrap"
                 >
-                  Login / Sign Up
+                  <span className="hidden sm:inline">Login / Sign Up</span>
+                  <span className="sm:hidden">Login</span>
                 </button>
               )}
             </div>
@@ -233,7 +235,7 @@ function App() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8">
         {hasRoadmapData ? (
           <>
             {/* Stats Dashboard */}
@@ -249,19 +251,19 @@ function App() {
                 <ActivityHeatmap activityData={activityData} />
               </div>
             ) : (
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-6 mb-8">
-                <div className="flex items-center justify-between flex-wrap gap-4">
-                  <div>
-                    <h2 className="text-2xl font-bold text-yellow-900 mb-2">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-lg p-4 sm:p-6 mb-6 sm:mb-8">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="w-full sm:w-auto">
+                    <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-yellow-900 mb-2">
                       🚀 Start Your DSA Journey Today!
                     </h2>
-                    <p className="text-yellow-800">
+                    <p className="text-sm sm:text-base text-yellow-800">
                       Track your progress, save notes, and maintain your learning streak!
                     </p>
                   </div>
                   <button
                     onClick={() => setShowAuthModal(true)}
-                    className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700 transition-colors font-medium whitespace-nowrap"
+                    className="bg-yellow-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg hover:bg-yellow-700 transition-colors font-medium whitespace-nowrap text-sm sm:text-base w-full sm:w-auto"
                   >
                     Get Started
                   </button>

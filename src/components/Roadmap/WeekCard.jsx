@@ -78,7 +78,7 @@ export const WeekCard = ({
       {/* Week Header */}
       <button
         onClick={onToggleExpand}
-        className={`group w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r transition-all duration-300 text-white relative overflow-hidden ${
+        className={`group w-full px-3 sm:px-4 lg:px-6 py-3 sm:py-4 flex items-center justify-between bg-gradient-to-r transition-all duration-300 text-white relative overflow-hidden ${
           isLocked 
             ? 'from-slate-400 to-slate-500 hover:from-slate-500 hover:to-slate-600 cursor-pointer shadow-md hover:shadow-lg' 
             : 'from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 shadow-md hover:shadow-xl'
@@ -87,51 +87,49 @@ export const WeekCard = ({
         {/* Subtle shine effect on hover */}
         <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-200%] group-hover:translate-x-[200%] transition-transform duration-700 ${isLocked ? 'opacity-50' : ''}`}></div>
         
-        <div className="flex items-center gap-3 relative z-10">
+        {/* Left side: Icons and Title */}
+        <div className="flex items-center gap-2 sm:gap-3 relative z-10 flex-1 min-w-0">
           {isLocked ? (
-            <div className="relative">
-              <Lock className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" />
+            <div className="relative flex-shrink-0">
+              <Lock className="w-4 h-4 sm:w-5 sm:h-5 group-hover:scale-110 transition-transform duration-200" />
               {/* Pulse animation on lock icon */}
-              <span className="absolute inset-0 w-5 h-5 bg-white/30 rounded-full animate-ping"></span>
-              {/* Tooltip */}
-              <div className="absolute left-1/2 -translate-x-1/2 top-full mt-2 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover/lock:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none z-50">
-                Click to unlock
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 border-4 border-transparent border-b-gray-900"></div>
-              </div>
+              <span className="absolute inset-0 w-4 h-4 sm:w-5 sm:h-5 bg-white/30 rounded-full animate-ping"></span>
             </div>
           ) : isExpanded ? (
-            <ChevronDown className="w-5 h-5 group-hover:translate-y-0.5 transition-transform duration-200" />
+            <ChevronDown className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 group-hover:translate-y-0.5 transition-transform duration-200" />
           ) : (
-            <ChevronRight className="w-5 h-5 group-hover:translate-x-0.5 transition-transform duration-200" />
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 group-hover:translate-x-0.5 transition-transform duration-200" />
           )}
           
-          <Trophy className={`w-5 h-5 transition-all duration-200 ${isLocked ? 'opacity-50 group-hover:opacity-70' : 'group-hover:scale-110'}`} />
+          <Trophy className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 transition-all duration-200 ${isLocked ? 'opacity-50 group-hover:opacity-70' : 'group-hover:scale-110'}`} />
           
-          <span className="text-xl font-bold group-hover:translate-x-1 transition-transform duration-200">
-            Week {week.weekNumber}: {week.title}
-          </span>
-          
-          {isLocked && (
-            <span className="text-xs bg-white/20 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/30 animate-pulse">
-              🔒 Locked
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 min-w-0 flex-1">
+            <span className="text-sm sm:text-lg lg:text-xl font-bold truncate">
+              Week {week.weekNumber}: {week.title}
             </span>
-          )}
+            
+            {isLocked && (
+              <span className="text-[10px] sm:text-xs bg-white/20 backdrop-blur-sm px-2 py-0.5 sm:px-3 sm:py-1 rounded-full font-semibold text-white border border-white/30 animate-pulse whitespace-nowrap self-start">
+                🔒 Locked
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Stats on the right */}
-        <div className="flex items-center gap-4 relative z-10">
-          <div className={`text-sm bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/40 transition-all duration-200 ${isLocked ? 'opacity-70' : 'group-hover:bg-white/40'}`}>
+        {/* Right side: Stats */}
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2 sm:gap-3 lg:gap-4 relative z-10 flex-shrink-0 ml-2">
+          <div className={`text-[10px] sm:text-xs lg:text-sm bg-white/30 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-semibold text-white border border-white/40 transition-all duration-200 whitespace-nowrap ${isLocked ? 'opacity-70' : 'group-hover:bg-white/40'}`}>
             {completedDaysCount}/{week.days.length} Days
           </div>
-          <div className={`text-sm bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/40 transition-all duration-200 ${isLocked ? 'opacity-70' : 'group-hover:bg-white/40'}`}>
-            {progressPercentage}% Complete
+          <div className={`text-[10px] sm:text-xs lg:text-sm bg-white/30 backdrop-blur-sm px-2 py-1 sm:px-3 sm:py-1.5 rounded-full font-semibold text-white border border-white/40 transition-all duration-200 whitespace-nowrap ${isLocked ? 'opacity-70' : 'group-hover:bg-white/40'}`}>
+            {progressPercentage}%
           </div>
         </div>
       </button>
 
       {/* Week Content */}
       {isExpanded &&  !isLocked && (
-        <div className="p-6 space-y-4 bg-gray-50">
+        <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 bg-gray-50">
           {week.days.map((day) => {
             const dayId = `w${week.weekNumber}d${day.day}`;
             const isCompleted = isDayCompleted(day, userProgress.completedTasks);

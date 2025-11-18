@@ -33,16 +33,16 @@ export const DayCard = ({
       {/* Day Header */}
       <button
         onClick={onToggleExpand}
-        className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
+        className="w-full px-3 sm:px-4 py-2 sm:py-3 flex items-center justify-between hover:bg-gray-50 transition-colors"
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
           {isExpanded ? (
             <ChevronDown className="w-4 h-4 text-gray-600" />
           ) : (
             <ChevronRight className="w-4 h-4 text-gray-600" />
           )}
 
-          <div className="flex items-center gap-2">
+          {/* <div className="flex items-center gap-2">
             {isCompleted ? (
               <CheckCircle className="w-5 h-5 text-green-500" />
             ) : (
@@ -68,13 +68,40 @@ export const DayCard = ({
             <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded font-medium">
               Complete
             </span>
+          )} */}
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {isCompleted ? (
+              <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500 flex-shrink-0" />
+            ) : (
+              <Circle className="w-4 h-4 sm:w-5 sm:h-5 text-gray-300 flex-shrink-0" />
+            )}
+            <span className="font-semibold text-gray-800 text-left text-sm sm:text-base truncate">
+              Day {day.day}: {day.title}
+            </span>
+          </div>
+
+          {isSkipped && (
+            <span className="text-[10px] sm:text-xs bg-gray-200 text-gray-700 px-2 py-0.5 sm:py-1 rounded whitespace-nowrap flex-shrink-0">
+              Skipped
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-end sm:items-center gap-1 sm:gap-3 flex-shrink-0 ml-2">
+          <span className="text-xs sm:text-sm text-gray-600 whitespace-nowrap">
+            {completedTasksCount}/{day.tasks.length}
+          </span>
+          {isCompleted && (
+            <span className="text-[10px] sm:text-xs bg-green-100 text-green-700 px-2 py-0.5 sm:py-1 rounded font-medium whitespace-nowrap">
+              ✓
+            </span>
           )}
         </div>
       </button>
 
       {/* Day Content */}
       {isExpanded && (
-        <div className="px-4 pb-4 space-y-4">
+        <div className="px-3 sm:px-4 pb-3 sm:pb-4 space-y-3 sm:space-y-4">
           {/* Resources Section */}
           <ResourcesSection topics={day.topics} subtopics={day.subtopics} />
 
