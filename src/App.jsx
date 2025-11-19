@@ -1,4 +1,4 @@
-// src/App.jsx - ALL ISSUES FIXED
+// src/App.jsx
 import { useState, useEffect } from 'react';
 import { Trophy, LogOut, Lock } from 'lucide-react';
 import { roadmapData } from './data/roadmapData';
@@ -20,7 +20,7 @@ const UNLOCKED_WEEKS_COUNT = 2;
 // =========================================
 
 function App() {
-  // ✅ CRITICAL FIX: useAuth returns 'currentUser', not 'user'
+  
   const { currentUser, isAuthenticated, isLoading: authLoading, login, signup, logout } = useAuth();
   const { userProgress, isLoading: progressLoading, toggleTask, updateNote, toggleSkipDay } = useProgress(currentUser);
   const { toasts, removeToast, success, error, warning, auth } = useToast();
@@ -29,10 +29,10 @@ function App() {
   const [expandedWeeks, setExpandedWeeks] = useState({});
   const [expandedDays, setExpandedDays] = useState({});
 
-  // ✅ FIX: Combined loading state
+  
   const isLoading = authLoading || (isAuthenticated && progressLoading);
 
-  // ✅ FIX: Don't show loading screen when auth modal is open
+  
   const shouldShowLoadingScreen = isLoading && !showAuthModal;
 
   // Check roadmapData exists
@@ -77,7 +77,7 @@ function App() {
   // ==================== EVENT HANDLERS ====================
 
   const handleLogin = async (email, password) => {
-    // ✅ FIX: Throw error to AuthModal, don't close modal on error
+    
     try {
       await login(email, password);
       // Only close modal if login succeeds
@@ -89,7 +89,7 @@ function App() {
   };
 
   const handleSignup = async (username, email, password) => {
-    // ✅ FIX: Throw error to AuthModal
+    
     try {
       await signup(username, email, password);
       // Don't close modal - let AuthModal show success message
@@ -107,8 +107,6 @@ function App() {
     }
   };
 
-  // ✅ FIX: Ensure these handlers work properly
-  // ✅ FIX: Task toggle with toast notification
   const handleToggleTask = (taskId) => {
     if (!isAuthenticated) {
       auth('Please login to track your progress and save data', 4000);
@@ -125,28 +123,36 @@ function App() {
 
   const handleUpdateNote = (dayId, note) => {
     if (!isAuthenticated) {
-      alert('Please login to save notes');
+      auth('🔐 Please login to save notes and track your learning!', 4000);
+      setTimeout(() => setShowAuthModal(true), 500);
       return;
     }
     
     try {
       updateNote(dayId, note);
     } catch (error) {
-      alert(error.message);
+      error(error.message || 'Failed to save note', 4000);
     }
   };
 
   const handleToggleSkipDay = (dayId) => {
     if (!isAuthenticated) {
-      alert('Please login to skip days');
+      auth('🔐 Please login to skip days and manage your schedule!', 4000);
+      setTimeout(() => setShowAuthModal(true), 500);
       return;
     }
     
     try {
       toggleSkipDay(dayId);
     } catch (error) {
-      alert(error.message);
+      error(error.message || 'Failed to skip day', 4000);
     }
+  };
+
+  // Handler when authentication is required
+  const handleAuthRequired = () => {
+    auth('🔐 Please login to track your progress and save your work!', 4000);
+    setTimeout(() => setShowAuthModal(true), 500);
   };
 
   // Toggle week expansion
@@ -167,7 +173,6 @@ function App() {
 
   // ==================== RENDER ====================
 
-  // ✅ FIX: Show loading spinner while auth/data loads (but not when modal is open)
   if (shouldShowLoadingScreen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 flex items-center justify-center">
@@ -312,66 +317,11 @@ function App() {
                     onToggleSkipDay={handleToggleSkipDay}
                     isAuthenticated={isAuthenticated}
                     isLocked={isLocked}
+                    onAuthRequired={handleAuthRequired}
                   /></div>
                 );
               })}
             </div>
-
-            {/* Roadmap Weeks - Using WeekCard Component */}
-            {/* <div className="space-y-4">
-              {roadmapData.weeks.map((week) => {
-                const isLocked = !isAuthenticated && week.weekNumber > 2;
-                
-                return (
-                  <div key={week.weekNumber} className="relative">
-                    {/* ✅ Lock overlay for weeks 3+ when not authenticated *
-                    {isLocked && (
-                      <div className="absolute inset-0 bg-gradient-to-br from-gray-900/40 to-gray-900/60 backdrop-blur-[2px] rounded-lg z-10 flex items-center justify-center cursor-pointer"
-                        onClick={() => {
-                          auth('Login to unlock all weeks! You can view Weeks 1-2 for free.', 4000);
-                          setTimeout(() => setShowAuthModal(true), 500);
-                        }}
-                      >
-                        <div className="bg-white/95 rounded-lg p-6 shadow-2xl text-center max-w-sm mx-4">
-                          <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <svg className="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                            </svg>
-                          </div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-2">Unlock All Weeks</h3>
-                          <p className="text-sm text-gray-600 mb-4">
-                            Create a free account to access all 16 weeks and track your progress!
-                          </p>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowAuthModal(true);
-                            }}
-                            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition-colors font-medium"
-                          >
-                            Sign Up Free
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <WeekCard
-                      week={week}
-                      isExpanded={expandedWeeks[week.weekNumber]}
-                      onToggleExpand={() => toggleWeek(week.weekNumber)}
-                      expandedDays={expandedDays}
-                      onToggleDayExpand={handleToggleDayExpand}
-                      userProgress={userProgress}
-                      onToggleTask={handleToggleTask}
-                      onUpdateNote={handleUpdateNote}
-                      onToggleSkipDay={handleToggleSkipDay}
-                      isAuthenticated={isAuthenticated}
-                    />
-                  </div>
-                );
-              })}
-            </div> */}
-
           </>
         ) : (
           <div className="bg-white rounded-lg shadow-md p-8 text-center">

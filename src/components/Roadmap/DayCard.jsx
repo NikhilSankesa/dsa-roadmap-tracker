@@ -18,7 +18,8 @@ export const DayCard = ({
   onToggleTask,
   onUpdateNote,
   onToggleSkipDay,
-  isAuthenticated
+  isAuthenticated,
+  onAuthRequired
 }) => {
   const dayId = `w${weekNumber}d${day.day}`;
 
@@ -117,6 +118,7 @@ export const DayCard = ({
                 isCompleted={!!userProgress.completedTasks[task.id]}
                 onToggle={onToggleTask}
                 isAuthenticated={isAuthenticated}
+                onAuthRequired={onAuthRequired}
               />
             ))}
           </div>
@@ -130,6 +132,7 @@ export const DayCard = ({
             note={userProgress.notes[dayId]}
             onUpdateNote={onUpdateNote}
             isAuthenticated={isAuthenticated}
+            onAuthRequired={onAuthRequired}
           />
 
           {/* Skip Day Button */}

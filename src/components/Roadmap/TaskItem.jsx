@@ -1,11 +1,12 @@
 // src/components/Roadmap/TaskItem.jsx
 import React from 'react';
 import { CheckCircle, Circle, Code } from 'lucide-react';
+import { useToast } from '../../hooks/useToast';
 
-export const TaskItem = ({ task, isCompleted, onToggle, isAuthenticated }) => {
+export const TaskItem = ({ task, isCompleted, onToggle, isAuthenticated, onAuthRequired }) => {
   const handleClick = () => {
     if (!isAuthenticated) {
-      alert('Please login to track your progress');
+      onAuthRequired?.();
       return;
     }
     onToggle(task.id);
@@ -55,28 +56,6 @@ export const TaskItem = ({ task, isCompleted, onToggle, isAuthenticated }) => {
           >
             {task.title}
           </span>
-
-          {/* {task.difficulty && (
-            <span
-              className={`text-xs px-2 py-0.5 rounded font-medium ${getDifficultyColor(
-                task.difficulty
-              )}`}
-            >
-              {task.difficulty}
-            </span>
-          )}
-
-          {task.estimatedTime && (
-            <span className="text-xs text-gray-500 italic">
-              ({task.estimatedTime})
-            </span>
-          )}
-
-          {task.type && (
-            <span className="text-xs px-2 py-0.5 rounded bg-blue-50 text-blue-600 font-medium">
-              {task.type}
-            </span>
-          )} */}
           {task.difficulty && (
             <span
               className={`text-[10px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded font-medium whitespace-nowrap ${getDifficultyColor(

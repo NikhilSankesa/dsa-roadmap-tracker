@@ -15,7 +15,8 @@ export const WeekCard = ({
   onToggleTask,
   onUpdateNote,
   onToggleSkipDay,
-  isAuthenticated
+  isAuthenticated,
+  onAuthRequired,
 }) => {
   const completedDaysCount = week.days.filter((day) =>
     isDayCompleted(day, userProgress.completedTasks)
@@ -33,47 +34,6 @@ export const WeekCard = ({
 
   return (
     <div className="bg-white rounded-lg shadow-md overflow-hidden">
-      
-{/*       
-{/* Week Header }
-      <button
-        onClick={onToggleExpand}
-        className={`w-full px-6 py-4 flex items-center justify-between bg-gradient-to-r transition-all ${
-          isLocked 
-            ? 'from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 cursor-pointer' 
-            : 'from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600'
-        } text-white`}
-      >
-        <div className="flex items-center gap-3">
-          {isLocked ? (
-            <Lock className="w-5 h-5" />
-          ) : isExpanded ? (
-            <ChevronDown className="w-5 h-5" />
-          ) : (
-            <ChevronRight className="w-5 h-5" />
-          )}
-          <Trophy className="w-5 h-5" />
-          <span className="text-xl font-bold">
-            Week {week.weekNumber}: {week.title}
-          </span>
-          {isLocked && (
-            <span className="text-sm bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/40">
-              🔒 Locked
-            </span>
-          )}
-        </div>
-
-        {Changed text color to WHITE and added better contrast }
-        <div className="flex items-center gap-4">
-          <div className="text-sm bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/40">
-            {completedDaysCount}/{week.days.length} Days
-          </div>
-          <div className="text-sm bg-white/30 backdrop-blur-sm px-3 py-1.5 rounded-full font-semibold text-white border border-white/40">
-            {progressPercentage}% Complete
-          </div>
-        </div>
-      </button>
- */}
 
       {/* Week Header */}
       <button
@@ -153,6 +113,7 @@ export const WeekCard = ({
                 onUpdateNote={onUpdateNote}
                 onToggleSkipDay={onToggleSkipDay}
                 isAuthenticated={isAuthenticated}
+                onAuthRequired={onAuthRequired}
               />
             );
           })}
